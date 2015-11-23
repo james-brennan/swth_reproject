@@ -31,46 +31,12 @@ int main()
 
     // 3. Prepare coordinate transform grid
     //    1. make arrays of coordinate informati
-    int Xsize = swDataset->GetRasterXSize();
-    int Ysize = swDataset->GetRasterYSize();
+    int nCols = swDataset->GetRasterXSize();
+    int nRows = swDataset->GetRasterYSize();
     int dims = 2;
 
-    //double* coords[] = new double[Xsize][Ysize][dims];
 
-    // try using vector
-
-    std::vector<std::vector<std::vector<double> > > coords;
-
-    // Set up sizes. (HEIGHT x WIDTH)
-    coords.resize(Xsize);
-    for (int i = 0; i < Xsize; ++i) {
-      coords[i].resize(Ysize);
-
-      for (int j = 0; j < Xsize; ++j)
-        coords[i][j].resize(dims);
-    }
-
-
-    // 4. Compute coodinates for every element of grid...
-    double u;
-    double v;
-    for (int x=0; x < Xsize; x++) {
-      for (int y=0; y < Ysize; y++) {
-        // calculate new values
-        double yi = (double) y;
-        double xi = (double) x;
-        u = GeoTransform[0] + GeoTransform[1]*xi + GeoTransform[2]*yi;
-        v = GeoTransform[3] + GeoTransform[4]*xi + GeoTransform[5]*yi;
-        // now put into coords array
-        coords[x][y][0]= u;
-        coords[x][y][1]= u;
-
-      }
-    }
-    // 5. Save it out to a file
-
-
-
+    // Make output file...
     const char *pszFormat = "GTiff";
     GDALDriver *poDriver;
     poDriver = GetGDALDriverManager()->GetDriverByName(pszFormat);
@@ -78,18 +44,47 @@ int main()
     const char * pszDstFilename = "Coords.tif";
     GDALDataset *poDstDS;
     char **papszOptions = NULL;
-    poDstDS = poDriver->Create( pszDstFilename, Xsize, Ysize, 2, GDT_Float32, papszOptions );
-
+    poDstDS = poDriver->Create( pszDstFilename, nCols, nRows, 2, GDT_Float32, papszOptions );
     // get format right
     GDALRasterBand *poBand;
 
     poDstDS->SetGeoTransform( GeoTransform );
     poDstDS->SetProjection( ProjectionInfo );
-    poBand = poDstDS->GetRasterBand(1);
-    poBand->RasterIO( GF_Write, 0, 0, Xsize, Ysize,
-                      coords, Xsize, Ysize, GDT_Float32, 0, 0 );
+
+
+    GDALRasterBand *lonBand;
+    GDALRasterBand *latBand;
+
+    // Do it row by row for now
+    float *coordsX = (float*) CPLMalloc(sizeof(float)*nCols);
+    float *coordsY = (float*) CPLMalloc(sizeof(float)*nCols);
+
+
+    // 4. Compute coodinates for every element of grid...
+    double u;
+    double v;
+    for (int i=0; i < nRows; i++) {
+      for (int j=0; j < nCols; j++) {
+        // calculate new values
+        double yi = (double) j;
+        double xi = (double) i;
+        u = GeoTransform[0] + GeoTransform[1]*xi + GeoTransform[2]*yi;
+        v = GeoTransform[3] + GeoTransform[4]*xi + GeoTransform[5]*yi;
+        // now put into coords array
+        coordsX[j]= u;
+        coordsY[j]= v;
+      }
+    // write out to file after each row...
+    lonBand = poDstDS->GetRasterBand(1);
+    latBand = poDstDS->GetRasterBand(2);
+    lonBand->RasterIO( GF_Write, 0, i, nCols, 1,
+                      coordsX, nCols, 1, GDT_Float32, 0, 0 );
+    latBand->RasterIO( GF_Write, 0, i, nCols, 1,
+                      coordsY, nCols, 1, GDT_Float32, 0, 0 );
+    }
+    // 5. Save it out to a file
+
     /* Once we're done, close properly the dataset */
     GDALClose( (GDALDatasetH) poDstDS );
-
 
 }
