@@ -12,7 +12,7 @@
 int main()
 {
     // 1. Load the dataset
-    const char * Filename = "L2_of_MER_RRG_1PRACR20080607_123851_000026442069_00167_32786_0000_h19v10_sdr_10.tif";
+    const char * Filename = "NETCDF:\"L2_of_MER_RRG_1PRACR20080629_124716_000026412069_00482_33101_0000.nc\":sdr_6";
     GDALDataset  *swDataset;
     GDALAllRegister();
     swDataset = (GDALDataset *) GDALOpen( Filename, GA_ReadOnly );
